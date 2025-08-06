@@ -679,7 +679,11 @@ func (v2 *Handlers) GetBlock(ctx echo.Context, round basics.Round, params model.
 		if blockErr != nil {
 			switch blockErr.(type) {
 			case ledgercore.ErrNoEntry:
-				return notFound(ctx, blockErr, errFailedLookingUpLedger, v2.Log)
+				blockbytes, err = v2.fetchBlockBytesFromS3(ctx, round)
+				if err != nil {
+					return notFound(ctx, err, errFailedLookingUpLedger, v2.Log)
+				}
+				// fall back
 			default:
 				return internalError(ctx, blockErr, blockErr.Error(), v2.Log)
 			}
@@ -737,6 +741,31 @@ func (v2 *Handlers) getBlockHeader(ctx echo.Context, round basics.Round, handle 
 	}
 
 	return ctx.Blob(http.StatusOK, contentType, data)
+}
+
+func (v2 *Handlers) fetchBlockBytesFromS3(ctx echo.Context, round basics.Round) ([]byte, error) {
+
+	// Build the URL
+	baseUrl, ok := os.LookupEnv("ARCHIVE_BASE_URL")
+	if !ok {
+		return nil, internalError(ctx, fmt.Errorf("archival base url not set"), "archival base url not set", v2.Log)
+	}
+	url := baseUrl + fmt.Sprint(round)
+
+	// Get block bytes
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, internalError(ctx, err, errFailedLookingUpLedger, v2.Log)
+	}
+	defer resp.Body.Close()
+
+	// Read response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, internalError(ctx, err, errFailedLookingUpLedger, v2.Log)
+	}
+
+	return body, nil
 }
 
 // GetBlockTxids gets all top level TxIDs in a block for the given round.
