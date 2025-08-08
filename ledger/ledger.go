@@ -382,29 +382,29 @@ func initBlocksDB(tx *sql.Tx, log logging.Logger, initBlocks []bookkeeping.Block
 	}
 
 	// in archival mode check if DB contains all blocks up to the latest
-	if isArchival {
-		earliest, err := blockdb.BlockEarliest(tx)
-		if err != nil {
-			err = fmt.Errorf("initBlocksDB.blockEarliest %v", err)
-			return err
-		}
+	//if isArchival {
+	//	earliest, err := blockdb.BlockEarliest(tx)
+	//	if err != nil {
+	//		err = fmt.Errorf("initBlocksDB.blockEarliest %v", err)
+	//		return err
+	//	}
 
-		// Detect possible problem - archival node needs all block but have only subsequence of them
-		// So reset the DB and init it again
-		if earliest != basics.Round(0) {
-			log.Warnf("resetting blocks DB (earliest block is %v)", earliest)
-			err := blockdb.BlockResetDB(tx)
-			if err != nil {
-				err = fmt.Errorf("initBlocksDB.blockResetDB %v", err)
-				return err
-			}
-			err = blockdb.BlockInit(tx, initBlocks)
-			if err != nil {
-				err = fmt.Errorf("initBlocksDB.blockInit 2 %v", err)
-				return err
-			}
-		}
-	}
+	//	// Detect possible problem - archival node needs all block but have only subsequence of them
+	//	// So reset the DB and init it again
+	//	if earliest != basics.Round(0) {
+	//		log.Warnf("resetting blocks DB (earliest block is %v)", earliest)
+	//		err := blockdb.BlockResetDB(tx)
+	//		if err != nil {
+	//			err = fmt.Errorf("initBlocksDB.blockResetDB %v", err)
+	//			return err
+	//		}
+	//		err = blockdb.BlockInit(tx, initBlocks)
+	//		if err != nil {
+	//			err = fmt.Errorf("initBlocksDB.blockInit 2 %v", err)
+	//			return err
+	//		}
+	//	}
+	//}
 
 	return nil
 }
