@@ -727,7 +727,12 @@ func (v2 *Handlers) getBlockHeader(ctx echo.Context, round basics.Round, handle 
 	if err != nil {
 		switch err.(type) {
 		case ledgercore.ErrNoEntry:
-			return notFound(ctx, err, errFailedLookingUpLedger, v2.Log)
+			tmp, err := v2.fetchBlockFromS3(ctx, round)
+			if err != nil {
+				return notFound(ctx, err, errFailedLookingUpLedger, v2.Log)
+			}
+			block = tmp.BlockHeader
+			// fallback
 		default:
 			return internalError(ctx, err, errFailedLookingUpLedger, v2.Log)
 		}
