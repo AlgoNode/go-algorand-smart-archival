@@ -698,7 +698,11 @@ func (v2 *Handlers) GetBlock(ctx echo.Context, round basics.Round, params model.
 	if err != nil {
 		switch err.(type) {
 		case ledgercore.ErrNoEntry:
-			return notFound(ctx, err, errFailedLookingUpLedger, v2.Log)
+			block, err = v2.fetchBlockFromS3(ctx, round)
+			if err != nil {
+				return notFound(ctx, err, errFailedLookingUpLedger, v2.Log)
+			}
+			// fallback
 		default:
 			return internalError(ctx, err, errFailedLookingUpLedger, v2.Log)
 		}
@@ -741,6 +745,33 @@ func (v2 *Handlers) getBlockHeader(ctx echo.Context, round basics.Round, handle 
 	}
 
 	return ctx.Blob(http.StatusOK, contentType, data)
+}
+
+func (v2 *Handlers) fetchBlockFromS3(ctx echo.Context, round basics.Round) (bookkeeping.Block, error) {
+
+	b, err := v2.fetchBlockBytesFromS3(ctx, round)
+	if err != nil {
+		return bookkeeping.Block{}, err
+	}
+
+	var blk rpcs.EncodedBlockCert
+	{
+		codecHandle := new(codec.MsgpackHandle)
+		codecHandle.ErrorIfNoField = true
+		codecHandle.ErrorIfNoArrayExpand = true
+		codecHandle.Canonical = true
+		codecHandle.RecursiveEmptyCheck = true
+		codecHandle.WriteExt = true
+		codecHandle.PositiveIntUnsigned = true
+
+		dec := codec.NewDecoderBytes(b, codecHandle)
+		err = dec.Decode(&blk)
+		if err != nil {
+			return bookkeeping.Block{}, fmt.Errorf("failed to decode EncodedBlockCert from msgpack: %w", err)
+		}
+	}
+
+	return blk.Block, nil
 }
 
 func (v2 *Handlers) fetchBlockBytesFromS3(ctx echo.Context, round basics.Round) ([]byte, error) {
