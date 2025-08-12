@@ -784,7 +784,9 @@ func (v2 *Handlers) fetchBlockBytesFromS3(ctx echo.Context, round basics.Round) 
 	// Build the URL
 	baseUrl, ok := os.LookupEnv("ARCHIVE_BASE_URL")
 	if !ok {
-		return nil, internalError(ctx, fmt.Errorf("archival base url not set"), "archival base url not set", v2.Log)
+		// If ARCHIVE_BASE_URL is not set, act as if the block was not found.
+		// This will guarantee non-breaking changes in the API contract when the smart archival feature is disabled.
+		return nil, notFound(ctx, errors.New("archival URL not set"), errFailedLookingUpLedger, v2.Log)
 	}
 	url := baseUrl + fmt.Sprint(round)
 
