@@ -1102,13 +1102,7 @@ func downloadEncodedBlockCertFromExternalArchive(rnd basics.Round, baseUrl strin
 
 	// Encode block bytes to msgpack
 	{
-		codecHandle := new(codec.MsgpackHandle)
-		codecHandle.ErrorIfNoField = true
-		codecHandle.ErrorIfNoArrayExpand = true
-		codecHandle.Canonical = true
-		codecHandle.RecursiveEmptyCheck = true
-		codecHandle.WriteExt = true
-		codecHandle.PositiveIntUnsigned = true
+		codecHandle := makeCodecHandle()
 
 		var buf bytes.Buffer
 		enc := codec.NewEncoder(&buf, codecHandle)
@@ -1121,13 +1115,7 @@ func downloadEncodedBlockCertFromExternalArchive(rnd basics.Round, baseUrl strin
 
 	// Encode certificate bytes to msgpack
 	{
-		codecHandle := new(codec.MsgpackHandle)
-		codecHandle.ErrorIfNoField = true
-		codecHandle.ErrorIfNoArrayExpand = true
-		codecHandle.Canonical = true
-		codecHandle.RecursiveEmptyCheck = true
-		codecHandle.WriteExt = true
-		codecHandle.PositiveIntUnsigned = true
+		codecHandle := makeCodecHandle()
 
 		var buf bytes.Buffer
 		enc := codec.NewEncoder(&buf, codecHandle)
@@ -1179,13 +1167,7 @@ func downloadEncodedBlockCertFromArchive(rnd basics.Round, baseUrl string) (blk 
 
 	// Decode block bytes from msgpack
 	{
-		codecHandle := new(codec.MsgpackHandle)
-		codecHandle.ErrorIfNoField = true
-		codecHandle.ErrorIfNoArrayExpand = true
-		codecHandle.Canonical = true
-		codecHandle.RecursiveEmptyCheck = true
-		codecHandle.WriteExt = true
-		codecHandle.PositiveIntUnsigned = true
+		codecHandle := makeCodecHandle()
 
 		dec := codec.NewDecoderBytes(encodedBlockCertBytes, codecHandle)
 		err = dec.Decode(&blk)
@@ -1195,4 +1177,18 @@ func downloadEncodedBlockCertFromArchive(rnd basics.Round, baseUrl string) (blk 
 	}
 
 	return blk, nil
+}
+
+func makeCodecHandle() *codec.MsgpackHandle {
+
+	codecHandle := new(codec.MsgpackHandle)
+
+	codecHandle.ErrorIfNoField = true
+	codecHandle.ErrorIfNoArrayExpand = true
+	codecHandle.Canonical = true
+	codecHandle.RecursiveEmptyCheck = true
+	codecHandle.WriteExt = true
+	codecHandle.PositiveIntUnsigned = true
+
+	return codecHandle
 }
