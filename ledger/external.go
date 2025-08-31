@@ -34,6 +34,7 @@ func externalArchiveSettings() (url string, enabled bool) {
 
 func downloadBlockBytesFromExternalArchive(rnd basics.Round, baseUrl string) (blk []byte, cert []byte, err error) {
 
+	// Download block from external archive
 	encodedBlockCert, err := downloadBlockFromExternalArchive(rnd, baseUrl)
 	if err != nil {
 		return nil, nil, err
