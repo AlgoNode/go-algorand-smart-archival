@@ -381,7 +381,15 @@ func initBlocksDB(tx *sql.Tx, log logging.Logger, initBlocks []bookkeeping.Block
 		return err
 	}
 
-	// in archival mode check if DB contains all blocks up to the latest
+	// In archival mode check if DB contains all blocks up to the latest.
+	//
+	// When running in external archival mode, this check is not needed
+	// (since those blocks will be available in external storage).
+	_, externalArchivalEnabled := externalArchiveSettings()
+	if externalArchivalEnabled {
+		log.Info("skipping block init check in external archival mode")
+		return nil
+	}
 	if isArchival {
 		earliest, err := blockdb.BlockEarliest(tx)
 		if err != nil {
@@ -755,11 +763,26 @@ func (l *Ledger) LatestCommitted() (basics.Round, basics.Round) {
 
 // Block returns the block for round rnd.
 func (l *Ledger) Block(rnd basics.Round) (blk bookkeeping.Block, err error) {
-	return l.blockQ.getBlock(rnd)
+
+	// Try to obtain the block from local storage.
+	url, externalArchivalEnabled := externalArchiveSettings()
+	blk, err = l.blockQ.getBlock(rnd)
+	if err == nil || !externalArchivalEnabled {
+		return blk, err
+	}
+
+	// Fall back to external storage.
+	switch err.(type) {
+	case ledgercore.ErrNoEntry:
+		tmp, err := downloadBlockFromExternalArchive(rnd, url)
+		return tmp.Block, err
+	default:
+		return blk, err
+	}
 }
 
 // BlockHdr returns the BlockHeader of the block for round rnd.
-func (l *Ledger) BlockHdr(rnd basics.Round) (blk bookkeeping.BlockHeader, err error) {
+func (l *Ledger) BlockHdr(rnd basics.Round) (hdr bookkeeping.BlockHeader, err error) {
 
 	// Expected availability range in txTail.blockHeader is [Latest - MaxTxnLife, Latest]
 	// allowing (MaxTxnLife + 1) = 1001 rounds lookback.
@@ -772,20 +795,64 @@ func (l *Ledger) BlockHdr(rnd basics.Round) (blk bookkeeping.BlockHeader, err er
 	// the deepest lookup happens when txn.LastValid == current => txn.LastValid == Latest + 1
 	// that gives Latest + 1 - (MaxTxnLife + 1) = Latest - MaxTxnLife as the first round to be accessible.
 	hdr, ok := l.txTail.blockHeader(rnd)
-	if !ok {
-		hdr, err = l.blockQ.getBlockHdr(rnd)
+	if ok {
+		return hdr, nil
 	}
-	return hdr, err
+
+	// Try to obtain the block header from local storage.
+	url, externalArchivalEnabled := externalArchiveSettings()
+	hdr, err = l.blockQ.getBlockHdr(rnd)
+	if err == nil || !externalArchivalEnabled {
+		return hdr, err
+	}
+
+	// Fall back to external storage.
+	switch err.(type) {
+	case ledgercore.ErrNoEntry:
+		tmp, err := downloadBlockFromExternalArchive(rnd, url)
+		return tmp.Block.BlockHeader, err
+	default:
+		return hdr, err
+	}
 }
 
 // EncodedBlockCert returns the encoded block and the corresponding encoded certificate of the block for round rnd.
 func (l *Ledger) EncodedBlockCert(rnd basics.Round) (blk []byte, cert []byte, err error) {
-	return l.blockQ.getEncodedBlockCert(rnd)
+
+	// Try to obtain the block from local storage.
+	url, externalArchivalEnabled := externalArchiveSettings()
+	blk, cert, err = l.blockQ.getEncodedBlockCert(rnd)
+	if err == nil || !externalArchivalEnabled {
+		return blk, cert, err
+	}
+
+	// Fall back to external storage.
+	switch err.(type) {
+	case ledgercore.ErrNoEntry:
+		return downloadBlockBytesFromExternalArchive(rnd, url)
+	default:
+		return blk, cert, err
+	}
 }
 
 // BlockCert returns the block and the certificate of the block for round rnd.
 func (l *Ledger) BlockCert(rnd basics.Round) (blk bookkeeping.Block, cert agreement.Certificate, err error) {
-	return l.blockQ.getBlockCert(rnd)
+
+	// Try to obtain the block from local storage.
+	url, externalArchivalEnabled := externalArchiveSettings()
+	blk, cert, err = l.blockQ.getBlockCert(rnd)
+	if err == nil || !externalArchivalEnabled {
+		return blk, cert, err
+	}
+
+	// Fall back to external storage.
+	switch err.(type) {
+	case ledgercore.ErrNoEntry:
+		tmp, err := downloadBlockFromExternalArchive(rnd, url)
+		return tmp.Block, tmp.Certificate, err
+	default:
+		return blk, cert, err
+	}
 }
 
 // AddBlock adds a new block to the ledger.  The block is stored in an
