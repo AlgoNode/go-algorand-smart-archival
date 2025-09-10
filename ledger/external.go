@@ -97,6 +97,11 @@ func downloadBlockFromExternalArchive(rnd basics.Round, baseUrl string) (blk Enc
 		return EncodedBlockCert{}, fmt.Errorf("failed to read HTTP response body from external archive: %w", err)
 	}
 
+	// Check HTTP status code
+	if resp.StatusCode != http.StatusOK {
+		return EncodedBlockCert{}, fmt.Errorf("failed to download block from external archive: HTTP status code %d", resp.StatusCode)
+	}
+
 	// Decode block bytes from msgpack
 	{
 		codecHandle := makeCodecHandle()
