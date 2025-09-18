@@ -60,6 +60,7 @@ import (
 	"github.com/algorand/go-algorand/protocol"
 	"github.com/algorand/go-algorand/rpcs"
 	"github.com/algorand/go-algorand/stateproof"
+	"github.com/algorand/go-algorand/util"
 )
 
 // MaxTealSourceBytes sets a size limit for TEAL source programs for requests
@@ -839,7 +840,7 @@ func (v2 *Handlers) GetBlockTxids(ctx echo.Context, round basics.Round) error {
 func NewAppCallLogs(txid string, logs []string, appIndex basics.AppIndex) model.AppCallLogs {
 	return model.AppCallLogs{
 		TxId:             txid,
-		Logs:             convertSlice(logs, func(s string) []byte { return []byte(s) }),
+		Logs:             util.Map(logs, func(s string) []byte { return []byte(s) }),
 		ApplicationIndex: appIndex,
 	}
 }
@@ -1384,7 +1385,7 @@ func (v2 *Handlers) SimulateTransaction(ctx echo.Context, params model.SimulateT
 		}
 	}
 
-	response := convertSimulationResult(simulationResult)
+	response := convertSimulationResult(simulationResult, proto.EnableUnnamedBoxAccessInNewApps)
 
 	handle, contentType, err := getCodecHandle((*string)(params.Format))
 	if err != nil {
